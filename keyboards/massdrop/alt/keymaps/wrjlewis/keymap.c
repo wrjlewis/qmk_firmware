@@ -1,28 +1,39 @@
 #include QMK_KEYBOARD_H
 
 enum alt_keycodes {
-    U_T_AUTO = SAFE_RANGE, //USB Extra Port Toggle Auto Detect / Always Active
-    U_T_AGCR,              //USB Toggle Automatic GCR control
-    DBG_TOG,               //DEBUG Toggle On / Off
-    DBG_MTRX,              //DEBUG Toggle Matrix Prints
-    DBG_KBD,               //DEBUG Toggle Keyboard Prints
-    DBG_MOU,               //DEBUG Toggle Mouse Prints
-    MD_BOOT,               //Restart into bootloader after hold timeout
+    L_BRI = SAFE_RANGE, //LED Brightness Increase                                   //Working
+    L_BRD,              //LED Brightness Decrease                                   //Working
+    L_PTN,              //LED Pattern Select Next                                   //Working
+    L_PTP,              //LED Pattern Select Previous                               //Working
+    L_PSI,              //LED Pattern Speed Increase                                //Working
+    L_PSD,              //LED Pattern Speed Decrease                                //Working
+    L_T_MD,             //LED Toggle Mode                                           //Working
+    L_T_ONF,            //LED Toggle On / Off                                       //Broken
+    L_ON,               //LED On                                                    //Broken
+    L_OFF,              //LED Off                                                   //Broken
+    L_T_BR,             //LED Toggle Breath Effect                                  //Working
+    L_T_PTD,            //LED Toggle Scrolling Pattern Direction                    //Working
+    U_T_AGCR,           //USB Toggle Automatic GCR control                          //Working
+    DBG_TOG,            //DEBUG Toggle On / Off                                     //
+    DBG_MTRX,           //DEBUG Toggle Matrix Prints                                //
+    DBG_KBD,            //DEBUG Toggle Keyboard Prints                              //
+    DBG_MOU,            //DEBUG Toggle Mouse Prints                                 //
+    MD_BOOT             //Restart into bootloader after hold timeout                //Working
 };
 
 const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
-    [0] = LAYOUT_65_ansi_blocker(
+    [0] = LAYOUT(
         KC_ESC,  KC_1,    KC_2,    KC_3,    KC_4,    KC_5,    KC_6,    KC_7,    KC_8,    KC_9,    KC_0,    KC_MINS, KC_EQL,  KC_BSPC, KC_DEL,  \
         KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_LBRC, KC_RBRC, KC_BSLS, KC_HOME, \
         KC_CAPS, KC_A,    KC_S,    KC_D,    KC_F,    KC_G,    KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT,          KC_ENT,  KC_PGUP, \
         KC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_RSFT,          KC_UP,   KC_PGDN, \
         KC_LCTL, KC_LALT, KC_LGUI,                            KC_SPC,                             KC_RALT, MO(1),   KC_LEFT, KC_DOWN, KC_RGHT  \
     ),
-    [1] = LAYOUT_65_ansi_blocker(
+    [1] = LAYOUT(
         KC_GRV,  KC_F1,   KC_F2,   KC_F3,   KC_F4,   KC_F5,   KC_F6,   KC_F7,   KC_F8,   KC_F9,   KC_F10,  KC_F11,  KC_F12,  _______, KC_MUTE, \
-        _______, RGB_SPD, RGB_VAI, RGB_SPI, RGB_HUI, RGB_SAI, _______, U_T_AUTO,U_T_AGCR,_______, KC_PSCR, KC_SLCK, KC_PAUS, _______, KC_END, \
-        _______, RGB_RMOD,RGB_VAD, RGB_MOD, RGB_HUD, RGB_SAD, _______, _______, _______, _______, _______, _______,          _______, KC_VOLU, \
-        _______, RGB_TOG, _______, _______, _______, MD_BOOT, NK_TOGG, DBG_TOG, _______, _______, _______, _______,          KC_PGUP, KC_VOLD, \
+        L_T_BR,  L_PSD,   L_BRI,   L_PSI,   _______, _______, _______, _______, U_T_AGCR,_______, KC_PSCR, KC_SLCK, KC_PAUS, _______, KC_END, \
+        L_T_PTD, L_PTP,   L_BRD,   L_PTN,   _______, _______, _______, _______, _______, _______, _______, _______,          _______, KC_VOLU, \
+        _______, L_T_MD,  L_T_ONF, _______, _______, MD_BOOT, NK_TOGG, _______, _______, _______, _______, _______,          KC_PGUP, KC_VOLD, \
         _______, _______, _______,                            _______,                            _______, _______, KC_HOME, KC_PGDN, KC_END  \
     ),
     /*
@@ -44,9 +55,80 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     static uint32_t key_timer;
 
     switch (keycode) {
-        case U_T_AUTO:
-            if (record->event.pressed && MODS_SHIFT && MODS_CTRL) {
-                TOGGLE_FLAG_AND_PRINT(usb_extra_manual, "USB extra port manual mode");
+        case L_BRI:
+            if (record->event.pressed) {
+                if (LED_GCR_STEP > LED_GCR_MAX - gcr_desired) gcr_desired = LED_GCR_MAX;
+                else gcr_desired += LED_GCR_STEP;
+                if (led_animation_breathing) gcr_breathe = gcr_desired;
+            }
+            return false;
+        case L_BRD:
+            if (record->event.pressed) {
+                if (LED_GCR_STEP > gcr_desired) gcr_desired = 0;
+                else gcr_desired -= LED_GCR_STEP;
+                if (led_animation_breathing) gcr_breathe = gcr_desired;
+            }
+            return false;
+        case L_PTN:
+            if (record->event.pressed) {
+                if (led_animation_id == led_setups_count - 1) led_animation_id = 0;
+                else led_animation_id++;
+            }
+            return false;
+        case L_PTP:
+            if (record->event.pressed) {
+                if (led_animation_id == 0) led_animation_id = led_setups_count - 1;
+                else led_animation_id--;
+            }
+            return false;
+        case L_PSI:
+            if (record->event.pressed) {
+                led_animation_speed += ANIMATION_SPEED_STEP;
+            }
+            return false;
+        case L_PSD:
+            if (record->event.pressed) {
+                led_animation_speed -= ANIMATION_SPEED_STEP;
+                if (led_animation_speed < 0) led_animation_speed = 0;
+            }
+            return false;
+        case L_T_MD:
+            if (record->event.pressed) {
+                led_lighting_mode++;
+                if (led_lighting_mode > LED_MODE_MAX_INDEX) led_lighting_mode = LED_MODE_NORMAL;
+            }
+            return false;
+        case L_T_ONF:
+            if (record->event.pressed) {
+                led_enabled = !led_enabled;
+                I2C3733_Control_Set(led_enabled);
+            }
+            return false;
+        case L_ON:
+            if (record->event.pressed) {
+                led_enabled = 1;
+                I2C3733_Control_Set(led_enabled);
+            }
+            return false;
+        case L_OFF:
+            if (record->event.pressed) {
+                led_enabled = 0;
+                I2C3733_Control_Set(led_enabled);
+            }
+            return false;
+        case L_T_BR:
+            if (record->event.pressed) {
+                led_animation_breathing = !led_animation_breathing;
+                if (led_animation_breathing) {
+                    gcr_breathe = gcr_desired;
+                    led_animation_breathe_cur = BREATHE_MIN_STEP;
+                    breathe_dir = 1;
+                }
+            }
+            return false;
+        case L_T_PTD:
+            if (record->event.pressed) {
+                led_animation_direction = !led_animation_direction;
             }
             return false;
         case U_T_AGCR:
@@ -83,33 +165,19 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                 }
             }
             return false;
-        case RGB_TOG:
-            if (record->event.pressed) {
-              switch (rgb_matrix_get_flags()) {
-                case LED_FLAG_ALL: {
-                    rgb_matrix_set_flags(LED_FLAG_KEYLIGHT);
-                    rgb_matrix_set_color_all(0, 0, 0);
-                  }
-                  break;
-                case LED_FLAG_KEYLIGHT: {
-                    rgb_matrix_set_flags(LED_FLAG_UNDERGLOW);
-                    rgb_matrix_set_color_all(0, 0, 0);
-                  }
-                  break;
-                case LED_FLAG_UNDERGLOW: {
-                    rgb_matrix_set_flags(LED_FLAG_NONE);
-                    rgb_matrix_disable_noeeprom();
-                  }
-                  break;
-                default: {
-                    rgb_matrix_set_flags(LED_FLAG_ALL);
-                    rgb_matrix_enable_noeeprom();
-                  }
-                  break;
-              }
-            }
-            return false;
         default:
             return true; //Process all other keycodes normally
     }
 }
+
+led_instruction_t led_instructions[] = {
+    // https://www.storyspooler.com/using-qmk-for-lights-on-massdrop-ctrl/ .. instructions
+    // https://raw.githubusercontent.com/LastContinue/ctrl-info/master/scripts/leds_python3.py ..python script to run to generate ids for the keys you want to control
+    // https://raw.githubusercontent.com/LastContinue/ctrl-info/master/alt_led_map.png ..key map for alt
+
+    // Navy - all keys - layer 2
+    { .flags = LED_FLAG_MATCH_ID | LED_FLAG_MATCH_LAYER | LED_FLAG_USE_RGB, .id0 = 4294967295, .id1 = 4294967295, .id2 = 4294967295, .id3 = 255, .layer = 0,  .r = 0, .g =0, .b = 128},
+	// Black - all keys - layer 1
+    { .flags = LED_FLAG_MATCH_ID | LED_FLAG_MATCH_LAYER | LED_FLAG_USE_RGB, .id0 = 4294967295, .id1 = 4294967295, .id2 = 4294967295, .id3 = 255, .layer = 1,  .r = 255, .g =255, .b = 255},
+    { .end = 1 }
+};
